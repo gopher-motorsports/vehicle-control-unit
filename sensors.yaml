@@ -1,0 +1,176 @@
+sensors:
+# this is the name it will be referenced in the config files
+    "test_voltage_sensor":
+# this is the name for the code
+        name_english: "Basic Voltage Sensor for Testing"
+# all of the outputs this sensor can produce. Analog sensors will probably be only 1
+        outputs:
+# name for the output. This is only used for refrence
+            voltage:
+# what kind of unit output this will provide. This is only for refrence and does not do anything in code
+                unit: Float_0-1
+# what one bit of input coresponds to when going on the table. Is usually continuous(1) for analog sensors. 'm' in y = mx + b
+                quantization: continuous
+# what a value of zero means when going on the table. Usually 0 for analog sensors. 'b' in y = mx + b
+                offset: 0
+# the size of one data packet. This is always 12 for analog sensors as we have a 12bit ADC
+                data_size: 12
+        sensor_type:
+# type of sensor. This is an analog sensor
+            analog:
+# Input measurement. This can be Voltage, Current, or Resistive depending on the type of sensor
+                analog_subtype: Voltage
+                table:
+# lookup table for converting the output of the sensor (in Volts, Ohms, or milliamps) to the units
+# the output
+                    entries:
+# entries for the table. Independent is the value that is read by the module, corresponding to the dependent
+# value, which is the actual data we want to record. In this example the voltages [0->5] map to a [0->1]. There
+# must be at least 2 data points for this to work, but as many as needed can be added
+                        independent1: 0
+                        dependent1: 0
+                        independent2: 2.5
+                        dependent2: 0.5
+                        independent3: 5.0
+                        dependent3: 1.0
+# resistor values. These are the same name as on the PCB and are needed so the math going
+# to the ADC can be abstracted away and the table can be directly from the sensor. Set 'rin' and
+# 'rfilt' to 0 and the rest to RES_OPEN on a voltage sensor to pass in the raw voltage with no
+# modification
+                rin: 0
+                rdown: RES_OPEN
+                r3v: RES_OPEN
+                r5v: RES_OPEN
+                rfilt: 10000
+                rdiv: 19100
+
+
+
+
+    "linear_position_sensor":
+        name_english: "Linear position sensor used by shift and clutch pot"
+        outputs:
+            resistance:
+                unit: Float_0-1
+                quantization: continuous
+                offset: 0
+                data_size: 12
+        sensor_type:
+            analog:
+                analog_subtype: Resistive
+                table:
+                    entries:
+                        independent1: 0
+                        dependent1: 0
+                        independent2: 3.3
+                        dependent2: 1.0
+                rin: 0
+                rdown: RES_OPEN
+                r3v: RES_OPEN
+                r5v: RES_OPEN
+                rfilt: 0
+                rdiv: RES_OPEN    
+                
+    "test_resistive_sensor":
+        name_english: "Basic Resistive Sensor for Testing"
+        outputs:
+            resistance:
+                unit: Float_0-1
+                quantization: continuous
+                offset: 0
+                data_size: 12
+        sensor_type:
+            analog:
+                analog_subtype: Resistive
+                table:
+                    entries:
+                        independent1: 0
+                        dependent1: 0
+                        independent2: 5000
+                        dependent2: 0.5
+                        independent3: 10000
+                        dependent3: 1.0
+                rin: 0
+                rdown: RES_OPEN
+                r3v: RES_OPEN
+                r5v: 10000
+                rfilt: 10000
+                rdiv: 19100
+                
+    "test_current_sensor":
+        name_english: "Basic 420mA Sensor for Testing"
+        outputs:
+            current:
+                unit: Float_0-1
+                quantization: continuous
+                offset: 0
+                data_size: 12
+        sensor_type:
+            analog:
+                analog_subtype: Current
+                table:
+                    entries:
+                        independent1: 4
+                        dependent1: 0
+                        independent2: 20
+                        dependent2: 1
+                rin: 0
+                rdown: 160
+                r3v: RES_OPEN
+                r5v: RES_OPEN
+                rfilt: 10000
+                rdiv: RES_OPEN
+
+    "test_can_sensor":
+        name_english: "CAN Sensor for Testing"
+# CAN sensors will often have multiple outputs with many differences
+        outputs:
+            d16_fixed:
+                unit: 0_to_1
+# convert 0-65535 to 0-1
+                quantization: 0.0000015259
+                offset: 0
+                data_size: 16
+            u16_raw:
+                unit: raw_input
+                quantization: continuous
+                offset: 0
+                data_size: 16
+            float_1_raw:
+                unit: float
+                quantization: continuous
+                offset: 0
+                data_size: 32
+            float_2_scaled:
+                unit: scaled_float
+                quantization: 0.001
+                offset: 10
+                data_size: 32
+        sensor_type:
+            CAN:
+                byte_order: LSB
+                messages:
+                    message1:
+# link to what output this message is measuring
+                        output_measured: d16_fixed
+# CAN message ID for this data. There can be multiple outputs with different ids per sensor
+                        id: 0x137
+# Which data bytes are associated with this output. Make sure this matches the size. Both
+# values are inclusive, so a message with a single byte would be [0,0]
+                        data_byte_start: 0
+                        data_byte_end: 1
+                    message2:
+                        output_measured: u16_raw
+                        id: 0x137
+                        data_byte_start: 2
+                        data_byte_end: 3
+                    message3:
+                        output_measured: float_1_raw
+                        id: 0x138
+                        data_byte_start: 0
+                        data_byte_end: 3
+                    message4:
+                        output_measured: float_2_scaled
+                        id: 0x138
+                        data_byte_start: 4
+                        data_byte_end: 7
