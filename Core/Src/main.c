@@ -52,10 +52,27 @@ CAN_HandleTypeDef hcan2;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim10;
 
-osThreadId taskMain_LoopHandle;
-osThreadId taskGCAN_TXHandle;
-osThreadId taskGCAN_RXHandle;
-osThreadId invCtrlTaskHandle;
+/* Definitions for taskMain_Loop */
+osThreadId_t taskMain_LoopHandle;
+const osThreadAttr_t taskMain_Loop_attributes = {
+  .name = "taskMain_Loop",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityAboveNormal,
+};
+/* Definitions for taskGCAN_TX */
+osThreadId_t taskGCAN_TXHandle;
+const osThreadAttr_t taskGCAN_TX_attributes = {
+  .name = "taskGCAN_TX",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for taskGCAN_RX */
+osThreadId_t taskGCAN_RXHandle;
+const osThreadAttr_t taskGCAN_RX_attributes = {
+  .name = "taskGCAN_RX",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -69,10 +86,9 @@ static void MX_TIM2_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM10_Init(void);
 static void MX_CAN2_Init(void);
-void task_main_loop(void const * argument);
-void task_gcan_tx(void const * argument);
-void task_gcan_rx(void const * argument);
-void inv_ctrl(void const * argument);
+void task_main_loop(void *argument);
+void task_gcan_tx(void *argument);
+void task_gcan_rx(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -124,6 +140,9 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -141,25 +160,22 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of taskMain_Loop */
-  osThreadDef(taskMain_Loop, task_main_loop, osPriorityAboveNormal, 0, 256);
-  taskMain_LoopHandle = osThreadCreate(osThread(taskMain_Loop), NULL);
+  /* creation of taskMain_Loop */
+  taskMain_LoopHandle = osThreadNew(task_main_loop, NULL, &taskMain_Loop_attributes);
 
-  /* definition and creation of taskGCAN_TX */
-  osThreadDef(taskGCAN_TX, task_gcan_tx, osPriorityNormal, 0, 256);
-  taskGCAN_TXHandle = osThreadCreate(osThread(taskGCAN_TX), NULL);
+  /* creation of taskGCAN_TX */
+  taskGCAN_TXHandle = osThreadNew(task_gcan_tx, NULL, &taskGCAN_TX_attributes);
 
-  /* definition and creation of taskGCAN_RX */
-  osThreadDef(taskGCAN_RX, task_gcan_rx, osPriorityNormal, 0, 256);
-  taskGCAN_RXHandle = osThreadCreate(osThread(taskGCAN_RX), NULL);
-
-  /* definition and creation of invCtrlTask */
-  osThreadDef(invCtrlTask, inv_ctrl, osPriorityNormal, 0, 512);
-  invCtrlTaskHandle = osThreadCreate(osThread(invCtrlTask), NULL);
+  /* creation of taskGCAN_RX */
+  taskGCAN_RXHandle = osThreadNew(task_gcan_rx, NULL, &taskGCAN_RX_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
 
   /* Start scheduler */
   osKernelStart();
@@ -563,7 +579,7 @@ static void MX_GPIO_Init(void)
   * @retval None
   */
 /* USER CODE END Header_task_main_loop */
-void task_main_loop(void const * argument)
+void task_main_loop(void *argument)
 {
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
@@ -582,7 +598,7 @@ void task_main_loop(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_task_gcan_tx */
-void task_gcan_tx(void const * argument)
+void task_gcan_tx(void *argument)
 {
   /* USER CODE BEGIN task_gcan_tx */
   /* Infinite loop */
@@ -601,7 +617,7 @@ void task_gcan_tx(void const * argument)
 * @retval None
 */
 /* USER CODE END Header_task_gcan_rx */
-void task_gcan_rx(void const * argument)
+void task_gcan_rx(void *argument)
 {
   /* USER CODE BEGIN task_gcan_rx */
   /* Infinite loop */
@@ -611,25 +627,6 @@ void task_gcan_rx(void const * argument)
     osDelay(1);
   }
   /* USER CODE END task_gcan_rx */
-}
-
-/* USER CODE BEGIN Header_inv_ctrl */
-/**
-* @brief Function implementing the invCtrlTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_inv_ctrl */
-void inv_ctrl(void const * argument)
-{
-  /* USER CODE BEGIN inv_ctrl */
-  /* Infinite loop */
-  for(;;)
-  {
-	  inverter_ctrl_task();
-    osDelay(1);
-  }
-  /* USER CODE END inv_ctrl */
 }
 
 /**

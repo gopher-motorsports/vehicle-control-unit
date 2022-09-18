@@ -17,8 +17,8 @@
 
 // these are defines that only need to be changed if this module needs to interact with
 // non-GopherCAN busses
-#define FIFO0_RX_CALLBACK vcu_custom_can_callback(hcan, CAN_RX_FIFO0);
-#define FIFO1_RX_CALLBACK vcu_custom_can_callback(hcan, CAN_RX_FIFO1);
+#define FIFO0_RX_CALLBACK custom_service_can_rx_hardware(hcan, CAN_RX_FIFO0);
+#define FIFO1_RX_CALLBACK custom_service_can_rx_hardware(hcan, CAN_RX_FIFO1);
 
 // RX and TX buffer sizes. These values should be chosen by the devs
 #define RX_BUFFER_SIZE 64

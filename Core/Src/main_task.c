@@ -15,16 +15,6 @@ DRIVE_STATE_t curr_state = NOT_READY_STATE;
 U32 rtd_press_time = 0;
 
 
-void inverter_ctrl_task(void)
-{
-	while(1)
-	{
-		handle_inverter(&curr_state);
-		osDelay(INVERTER_TASK_DELAY);
-	}
-}
-
-
 // DO NOT DELETE
 int main_task()
 {
@@ -34,6 +24,8 @@ int main_task()
 
 	// Update the GCAN params for gsense??
 	// TODO
+
+	handle_inverter(&curr_state);
 
 	// handle the state machine with resets and RTD and such
 	if (curr_state == NOT_READY_STATE)

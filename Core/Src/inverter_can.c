@@ -4,6 +4,7 @@
 #include "cmsis_os.h"
 #include "GopherCAN.h"
 
+static void update_inv_state(void);
 static S8 send_can_message(U32 id, U8 dlc, U8* data);
 
 INTERNAL_STATES_t inv_states = {0};
@@ -19,7 +20,7 @@ CMD_CAN_t CAN_cmd =
 };
 INV_RW_CMD_CAN_t rw_cmd = {0};
 INV_CTRL_STATE_t inv_ctrl_state = INV_LOCKOUT;
-extern CAN_HandleTypeDef hcan1;
+extern CAN_HandleTypeDef hcan2;
 
 INV_CTRL_STATE_t get_inv_state(void)
 {
@@ -30,6 +31,8 @@ void handle_inverter(DRIVE_STATE_t* curr_state)
 {
 	U8 msg_data[8];
 	U16 torque_req = 0;
+
+	update_inv_state();
 
 	// find the state of the inverter based on the status of the ECU
 	if (inv_states.inv_enable_lockout)
@@ -111,50 +114,31 @@ void handle_inverter(DRIVE_STATE_t* curr_state)
 }
 
 
-void vcu_custom_can_callback(CAN_HandleTypeDef* hcan, U32 rx_mailbox)
+static void update_inv_state(void)
 {
-	CAN_RxHeaderTypeDef rx_header;
-	CAN_MSG message;
+	// read all of the internal states and fill in the structs
+	inv_states.vsm_state = inv_vsm_state.data;
+	inv_states.pwm_freq = inv_pwm_freq.data;
+	inv_states.inverter_state = inv_inverter_state.data;
+	inv_states.relay_state = inv_relay_state.data;
 
-	// TODO if this is not the INTERNAL_STATES_ID, pass to GSense
+	inv_states.inverter_run_mode = !!(inv_states_byte4.data & 0b00000001);
+	inv_states.inv_active_dis_state = (inv_states_byte4.data & 0b01110000) >> 4;
 
-	// hijack CAN for communicating with the inverter
-	if (HAL_CAN_GetRxMessage(hcan, rx_mailbox, &rx_header, message.data) != HAL_OK)
-	{
-		// TODO error
-		return;
-	}
+	inv_states.inv_cmd_mode = !!(inv_states_byte5.data & 0b00000001);
+	inv_states.rolling_counter_val = (inv_states_byte5.data & 0b01111000) >> 3;
 
-	message.rtr_bit = rx_header.RTR;
-	message.dlc = rx_header.DLC;
-	message.id = (rx_header.IDE ? rx_header.ExtId : rx_header.StdId);
+	inv_states.inv_en_state = !!(inv_states_byte6.data & 0b00000001);
+	inv_states.start_mode_active = !!(inv_states_byte6.data & 0b01000000);
+	inv_states.inv_enable_lockout = !!(inv_states_byte6.data & 0b10000000);
 
-	if (message.id == INTERNAL_STATES_ID && message.dlc == 8)
-	{
-		// read all of the internal states and fill in the structs
-		inv_states.vsm_state = message.data[0];
-		inv_states.pwm_freq = message.data[1];
-		inv_states.inverter_state = message.data[2];
-		inv_states.relay_state = message.data[3];
-
-		inv_states.inverter_run_mode = !!(message.data[4] & 0b00000001);
-		inv_states.inv_active_dis_state = (message.data[4] & 0b01110000) >> 4;
-
-		inv_states.inv_cmd_mode = !!(message.data[5] & 0b00000001);
-		inv_states.rolling_counter_val = (message.data[5] & 0b01111000) >> 3;
-
-		inv_states.inv_en_state = !!(message.data[6] & 0b00000001);
-		inv_states.start_mode_active = !!(message.data[6] & 0b01000000);
-		inv_states.inv_enable_lockout = !!(message.data[6] & 0b10000000);
-
-		inv_states.dir_cmd = !!(message.data[7] & 0b00000001);
-		inv_states.bms_active = !!(message.data[7] & 0b00000010);
-		inv_states.bms_limit_torque = !!(message.data[7] & 0b00000100);
-		inv_states.limit_max_speed = !!(message.data[7] & 0b00001000);
-		inv_states.limit_hot_spot = !!(message.data[7] & 0b00010000);
-		inv_states.low_speed_limiting = !!(message.data[7] & 0b00100000);
-		inv_states.coolant_temp_limiting = !!(message.data[7] & 0b01000000);
-	}
+	inv_states.dir_cmd = !!(inv_states_byte7.data & 0b00000001);
+	inv_states.bms_active = !!(inv_states_byte7.data & 0b00000010);
+	inv_states.bms_limit_torque = !!(inv_states_byte7.data & 0b00000100);
+	inv_states.limit_max_speed = !!(inv_states_byte7.data & 0b00001000);
+	inv_states.limit_hot_spot = !!(inv_states_byte7.data & 0b00010000);
+	inv_states.low_speed_limiting = !!(inv_states_byte7.data & 0b00100000);
+	inv_states.coolant_temp_limiting = !!(inv_states_byte7.data & 0b01000000);
 }
 
 
@@ -205,7 +189,7 @@ static S8 send_can_message(U32 id, U8 dlc, U8* data)
 	tx_header.RTR = DATA_MESSAGE;
 	tx_header.DLC = dlc;
 
-	HAL_CAN_AddTxMessage(&hcan1, &tx_header, data, &tx_mailbox_num);
+	HAL_CAN_AddTxMessage(&hcan2, &tx_header, data, &tx_mailbox_num);
 
 	return 0;
 }
